@@ -1,5 +1,6 @@
 import java.awt.BorderLayout;
 import java.awt.Checkbox;
+import java.awt.Color;
 import java.awt.Dimension;
 import java.awt.EventQueue;
 import java.awt.Graphics2D;
@@ -22,6 +23,10 @@ import javax.swing.JComponent;
 import javax.swing.JFileChooser;
 
 import java.awt.event.ActionListener;
+import java.awt.event.ComponentEvent;
+import java.awt.event.ComponentListener;
+import java.awt.event.WindowEvent;
+import java.awt.event.WindowListener;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.IOException;
@@ -38,7 +43,7 @@ import javax.swing.border.TitledBorder;
 import javax.swing.event.ChangeEvent;
 import javax.swing.event.ChangeListener;
 
-public class PhotoMosaic implements ActionListener, ChangeListener{
+public class PhotoMosaic implements ActionListener, ChangeListener, ComponentListener{
 	
 	/**
 	 * GUI elements
@@ -119,28 +124,28 @@ public class PhotoMosaic implements ActionListener, ChangeListener{
         JPanel settingPanel = new JPanel(new SpringLayout());
         settingPanel.setBorder(BorderFactory.createTitledBorder("Settings"));
         
-        xTileSpinner = new JSpinner(new SpinnerNumberModel(20, 0, 100, 1));
+        xTileSpinner = new JSpinner(new SpinnerNumberModel(20, 1, 1000, 1));
         JLabel label1 = new JLabel("X tiles");
         label1.setLabelFor(xTileSpinner);
         xTileSpinner.addChangeListener(this);
         settingPanel.add(label1);
         settingPanel.add(xTileSpinner);
         
-        yTileSpinner = new JSpinner(new SpinnerNumberModel(20, 0, 100, 1));
+        yTileSpinner = new JSpinner(new SpinnerNumberModel(20, 1, 1000, 1));
         JLabel label2 = new JLabel("Y tiles");
         label1.setLabelFor(yTileSpinner);
         yTileSpinner.addChangeListener(this);
         settingPanel.add(label2);
         settingPanel.add(yTileSpinner);
         
-        widthTileSpinner = new JSpinner(new SpinnerNumberModel(20, 0, 100, 1));
+        widthTileSpinner = new JSpinner(new SpinnerNumberModel(20, 1, 1000, 1));
         JLabel label3 = new JLabel("Tile width");
         label1.setLabelFor(widthTileSpinner);
         widthTileSpinner.addChangeListener(this);
         settingPanel.add(label3);
         settingPanel.add(widthTileSpinner);
         
-        heightTileSpinner = new JSpinner(new SpinnerNumberModel(20, 0, 100, 1));
+        heightTileSpinner = new JSpinner(new SpinnerNumberModel(20, 1, 1000, 1));
         JLabel label4 = new JLabel("Tile height");
         label1.setLabelFor(heightTileSpinner);
         heightTileSpinner.addChangeListener(this);
@@ -201,17 +206,32 @@ public class PhotoMosaic implements ActionListener, ChangeListener{
 		finalImagePanel.add(finalImageLabel);
 
 		frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+		frame.addComponentListener(this);
 		frame.pack();
 	}
 	
 	private void updateUI(){
-		baseImageLabel.setIcon(new ImageIcon(mosaicRenderer.getBaseImage()));
+		baseImageLabel.setIcon(new ImageIcon(
+				mosaicRenderer.getBaseImage().getScaledInstance(
+						baseImagePanel.getWidth(),
+						baseImagePanel.getHeight(), Image.SCALE_SMOOTH)
+				)
+		);
+			
 		imageWidthLabel.setText(imageWidthString+mosaicRenderer.getBaseImage().getWidth());
 		imageHeightLabel.setText(imageHeightString+mosaicRenderer.getBaseImage().getHeight());
-		mapImageLabel.setIcon(new ImageIcon(mosaicRenderer.getMapImage()));
-		finalImageLabel.setIcon(new ImageIcon(mosaicRenderer.getFinalImage()));
-		
-		//mapImageLabel.setIcon(new ImageIcon(mosaicRenderer.getMapImage()));
+		mapImageLabel.setIcon(new ImageIcon(
+				mosaicRenderer.getMapImage().getScaledInstance(
+						mapImagePanel.getWidth(),
+						mapImagePanel.getHeight(), Image.SCALE_SMOOTH)
+				)
+		);
+		finalImageLabel.setIcon(new ImageIcon(
+				mosaicRenderer.getFinalImage().getScaledInstance(
+						finalImagePanel.getWidth(),
+						finalImagePanel.getHeight(), Image.SCALE_SMOOTH)
+				)
+		);		//mapImageLabel.setIcon(new ImageIcon(mosaicRenderer.getMapImage()));
 		imagesNumberInLibraryLabel.setText(imagesNumberInLibraryString+tilesManager.getTilesNumber());
 	}
 
@@ -228,7 +248,7 @@ public class PhotoMosaic implements ActionListener, ChangeListener{
 		if (actionCommand.equals("getTilesAction")){
 			tilesManager.importTiles();
 		}
-		if (actionCommand.equals("RunAction")){
+		if (actionCommand.equals("RunAction")){			
 			if (tilesManager.getTilesNumber() > 0){
 				new Thread(mosaicRenderer).start();
 			} else {
@@ -244,5 +264,33 @@ public class PhotoMosaic implements ActionListener, ChangeListener{
 				(int)yTileSpinner.getValue(),
 				(int)widthTileSpinner.getValue(),
 				(int)heightTileSpinner.getValue());
+		updateUI();
 	}
+
+	@Override
+	public void componentHidden(ComponentEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void componentMoved(ComponentEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
+	@Override
+	public void componentResized(ComponentEvent e) {
+		Dimension currentFrameSize = e.getComponent().getSize();
+		if (((int)currentFrameSize.getHeight() % 20) == 0 | ((int)currentFrameSize.getWidth() % 20) == 0 ){
+			updateUI();
+		}
+	}
+
+	@Override
+	public void componentShown(ComponentEvent e) {
+		// TODO Auto-generated method stub
+		
+	}
+
 }     

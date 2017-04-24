@@ -1,3 +1,4 @@
+import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.Image;
 import java.awt.image.BufferedImage;
@@ -17,14 +18,19 @@ public class MosaicRender implements Runnable {
 	private int xTiles, yTiles, widthTile, heightTile;
 	
 	public MosaicRender() {
-		baseImageBuffer = new Tile("img_src/corgi.png").getTileImage();
-		mapImageBuffer = new Tile("img_src/corgi.png").getTileImage();
-		finalImageBuffer = new Tile("img_src/corgi.png").getTileImage();
-		
+		baseImageBuffer = new Tile("assets/corgi.png").getTileImage();
+		mapImageBuffer = new Tile("assets/corgi.png").getTileImage();
+		finalImageBuffer = new Tile("assets/corgi.png").getTileImage();
+				
 		xTiles = 20;
 		yTiles = 20;
 		widthTile = 20;
 		heightTile = 20;
+		
+		mapTileManager = new TilesManager();
+	
+		
+		prepareMapImage();
 	}
 	
 	@Override
@@ -33,7 +39,15 @@ public class MosaicRender implements Runnable {
 	}
 	
 	public void prepareMapImage(){
-		
+		Image mapBuffer = baseImageBuffer.getScaledInstance(xTiles, yTiles, Image.SCALE_DEFAULT);
+	    BufferedImage resizedMap = new BufferedImage(xTiles, yTiles, BufferedImage.TYPE_INT_ARGB); 
+	    // Draw the image on to the buffered image
+	    Graphics2D bGr = resizedMap.createGraphics();
+	    bGr.drawImage(mapBuffer, 0, 0, null);
+	    bGr.dispose();
+	    
+	   	mapImageBuffer = resizedMap;
+	    
 	}
 	
 	public void setBaseImage() {
@@ -43,7 +57,7 @@ public class MosaicRender implements Runnable {
         if (retrieve == JFileChooser.APPROVE_OPTION){
 			try {
 				baseImageBuffer = ImageIO.read(chooser.getSelectedFile());
-				//baseImage.getScaledInstance(500, 500, Image.SCALE_DEFAULT).getGraphics();
+				prepareMapImage();
 			} catch (IOException e) {
 				e.printStackTrace();
 			}
@@ -80,5 +94,6 @@ public class MosaicRender implements Runnable {
 		this.yTiles = yTiles;
 		this.widthTile = widthTile;
 		this.heightTile = heightTile;
+		prepareMapImage();
 	}
 }
