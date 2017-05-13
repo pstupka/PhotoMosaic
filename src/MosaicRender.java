@@ -58,7 +58,7 @@ public class MosaicRender {
 	    for (int i = 0; i < xTiles*yTiles; i++) {
 	    	randomIndexList.add(i);
 	    }
-	    
+	    	    
 	    Collections.shuffle(randomIndexList);
 	    
 		for (int i = 0; i < xTiles*yTiles; i++){
