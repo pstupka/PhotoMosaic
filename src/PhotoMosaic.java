@@ -50,7 +50,7 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 	 */
 	private JFrame frame;
 	private JButton runButton;
-	private JTabbedPane tabbedPane;
+	private JTabbedPane imageTabbedPane;
 	private JSpinner xTileSpinner, yTileSpinner, widthTileSpinner, heightTileSpinner;
 	private JPanel baseImagePanel, mapImagePanel, finalImagePanel;
 	private JProgressBar progressBar;
@@ -60,6 +60,11 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 	private JLabel imageWidthLabel, imageHeightLabel, imagesNumberInLibraryLabel;
 
 	JLabel baseImageLabel, mapImageLabel, finalImageLabel;
+	
+	/*
+	 * Threading sync variables 
+	 */
+	private boolean isImportingTiles = false;
 	
 	/**
 	 * Render components
@@ -84,6 +89,16 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 	}
 
 	/**
+	 * Progress Listener class updates progress bar of the application
+	 */
+	class ProgressListener implements ValueListener{
+		public void update(int value){
+			progressBar.setValue(value);
+			updateUI();
+		}
+	}
+	
+	/**
 	 * Create the application.
 	 */
 	public PhotoMosaic() {
@@ -91,8 +106,10 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 		imageHeightLabel = new JLabel(imageHeightString);
 		imagesNumberInLibraryLabel = new JLabel(imagesNumberInLibraryString);
 
-		tilesManager = new TilesManager();
-		mosaicRenderer = new MosaicRender();
+		ProgressListener progressListener = new ProgressListener();
+		
+		tilesManager = new TilesManager(progressListener);
+		mosaicRenderer = new MosaicRender(tilesManager, progressListener);
 		
 		initializeGUI();
 		updateUI();
@@ -105,16 +122,17 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 		frame = new JFrame("Photo Mosaic");
 		frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
 		
-		tabbedPane = new JTabbedPane();
+		imageTabbedPane = new JTabbedPane();
 		baseImagePanel = new JPanel();
 		baseImagePanel.setPreferredSize(new Dimension(350, 200));
-		tabbedPane.addTab("Base Image",baseImagePanel);
+		imageTabbedPane.addTab("Base Image",baseImagePanel);
 		mapImagePanel = new JPanel();
 		mapImagePanel.setPreferredSize(new Dimension(350, 200));
-		tabbedPane.addTab("Map Image",mapImagePanel);
+		imageTabbedPane.addTab("Map Image",mapImagePanel);
 		finalImagePanel = new JPanel();
 		finalImagePanel.setPreferredSize(new Dimension(350, 200));
-		tabbedPane.addTab("Final Image",finalImagePanel);
+		imageTabbedPane.addTab("Final Image",finalImagePanel);
+		imageTabbedPane.addChangeListener(this);
 		
 		progressBar = new JProgressBar(0, 100);
 		progressBar.setStringPainted(true);
@@ -205,36 +223,39 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 		finalImageLabel = new JLabel();
 		finalImagePanel.add(finalImageLabel);
 
-		frame.getContentPane().add(tabbedPane, BorderLayout.CENTER);
+		frame.getContentPane().add(imageTabbedPane, BorderLayout.CENTER);
 		frame.addComponentListener(this);
 		frame.pack();
 	}
 	
 	private void updateUI(){
-		baseImageLabel.setIcon(new ImageIcon(
-				mosaicRenderer.getBaseImage().getScaledInstance(
-						baseImagePanel.getWidth(),
-						baseImagePanel.getHeight(), Image.SCALE_SMOOTH)
-				)
-		);
-			
-		imageWidthLabel.setText(imageWidthString+mosaicRenderer.getBaseImage().getWidth());
-		imageHeightLabel.setText(imageHeightString+mosaicRenderer.getBaseImage().getHeight());
-		mapImageLabel.setIcon(new ImageIcon(
-				mosaicRenderer.getMapImage().getScaledInstance(
-						mapImagePanel.getWidth(),
-						mapImagePanel.getHeight(), Image.SCALE_SMOOTH)
-				)
-		);
-		finalImageLabel.setIcon(new ImageIcon(
-				mosaicRenderer.getFinalImage().getScaledInstance(
-						finalImagePanel.getWidth(),
-						finalImagePanel.getHeight(), Image.SCALE_SMOOTH)
-				)
-		);		//mapImageLabel.setIcon(new ImageIcon(mosaicRenderer.getMapImage()));
+		switch (imageTabbedPane.getSelectedIndex()){
+			case 0: 		
+				baseImageLabel.setIcon(new ImageIcon(
+					mosaicRenderer.getBaseImage().getScaledInstance(
+							baseImagePanel.getWidth(),
+							baseImagePanel.getHeight(),
+							Image.SCALE_SMOOTH)));
+				imageWidthLabel.setText(imageWidthString+mosaicRenderer.getBaseImage().getWidth());
+				imageHeightLabel.setText(imageHeightString+mosaicRenderer.getBaseImage().getHeight());
+				break;
+			case 1: 		
+				mapImageLabel.setIcon(new ImageIcon(
+					mosaicRenderer.getMapImage().getScaledInstance(
+							mapImagePanel.getWidth(),
+							mapImagePanel.getHeight(), Image.SCALE_SMOOTH)));
+				break;
+			case 2: 		
+				finalImageLabel.setIcon(new ImageIcon(
+					mosaicRenderer.getFinalImage().getScaledInstance(
+							finalImagePanel.getWidth(),
+							finalImagePanel.getHeight(), Image.SCALE_SMOOTH)));
+				break;
+			default: break;
+		}
 		imagesNumberInLibraryLabel.setText(imagesNumberInLibraryString+tilesManager.getTilesNumber());
 	}
-
+	
 	@Override
 	public void actionPerformed(ActionEvent e) {
 		String actionCommand = e.getActionCommand();
@@ -246,13 +267,29 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 			updateUI();
 		}
 		if (actionCommand.equals("getTilesAction")){
-			tilesManager.importTiles();
+			new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					isImportingTiles = true;
+					tilesManager.importTiles();
+					isImportingTiles = false;
+				}
+				
+			}).start();
 		}
-		if (actionCommand.equals("RunAction")){			
-			if (tilesManager.getTilesNumber() > 0){
-				new Thread(mosaicRenderer).start();
+		if (actionCommand.equals("RunAction")){		
+			if (tilesManager.getTilesNumber() > 0 & isImportingTiles == false){
+				new Thread(new Runnable(){
+
+					@Override
+					public void run() {
+						mosaicRenderer.createMosaic();
+					}
+					
+				}).start();
 			} else {
-				System.out.println("No tiles in library");
+				System.out.println("No tiles in library or importer is running");
 			}
 		}
 	
@@ -282,7 +319,7 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 	@Override
 	public void componentResized(ComponentEvent e) {
 		Dimension currentFrameSize = e.getComponent().getSize();
-		if (((int)currentFrameSize.getHeight() % 20) == 0 | ((int)currentFrameSize.getWidth() % 20) == 0 ){
+		if ((currentFrameSize.getHeight() % 10) == 0 | (currentFrameSize.getWidth() % 10) == 0 ){
 			updateUI();
 		}
 	}

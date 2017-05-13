@@ -11,6 +11,8 @@ public class Tile {
 	
 	private BufferedImage tileImage;
 	private Color pixelColor = new Color(0);
+	private int isUsed = 0;
+	
 	
 	public Tile(){
 	}
@@ -60,7 +62,17 @@ public class Tile {
 	public Color getPixelcolor(){
 		return pixelColor;
 	}
-	
-	
 
+	public void setUsed(){
+		this.isUsed++;
+	}
+	
+	public int isUsed(){
+		return this.isUsed;
+	}
+	
+	public void resetUsage(){
+		this.isUsed = 0;
+	}
+	
 }
