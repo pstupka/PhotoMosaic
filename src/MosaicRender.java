@@ -21,8 +21,8 @@ public class MosaicRender {
 	private BufferedImage mapImageBuffer;
 	private BufferedImage finalImageBuffer;
 	
-	private int xTiles, yTiles, widthTile, heightTile;
-	
+	private int xTiles, yTiles, widthTile, heightTile, maxTileUse;
+	private double colorDiffThreshold;
 	private TilesManager tilesManager;
 	
 	public MosaicRender(TilesManager manager, ValueListener progressListener) {
@@ -36,6 +36,8 @@ public class MosaicRender {
 		yTiles = 20;
 		widthTile = 20;
 		heightTile = 20;
+		colorDiffThreshold = 10;
+		maxTileUse = 100;
 		
 		this.tilesManager = manager;
 				
@@ -70,30 +72,27 @@ public class MosaicRender {
 			tilesManager.shuffle();
 			int x = randomIndexList.get(i)%xTiles;
 			int y = randomIndexList.get(i)/xTiles;
-			Color c = new Color(mapImageBuffer.getRGB(x,y));
+			LabColor labColor = new LabColor(mapImageBuffer.getRGB(x,y));
 			
 			for(int j = 0; j < maxTiles; j++){
 				Tile currentTile = tilesManager.getTile(j);
-				if (currentTile.isUsed() > 9) System.out.println(currentTile.isUsed());
-				if (currentTile.isUsed() < 10){
-					int redDiff = Math.abs(c.getRed() - currentTile.getPixelcolor().getRed());
-					int greenDiff = Math.abs(c.getGreen() - currentTile.getPixelcolor().getGreen());
-					int blueDiff = Math.abs(c.getBlue() - currentTile.getPixelcolor().getBlue());
-					double diff = Math.sqrt(redDiff*redDiff + greenDiff*greenDiff + blueDiff*blueDiff);
-
+				if (currentTile.isUsed() < maxTileUse){
+					double diff = LabColor.getDeltaErgb(currentTile.getPixelcolor(), labColor);
 					if (diff < minDifference){
 						matchTileID = j;
 						minDifference = diff;
-						if (minDifference < 20) break;
+						if (minDifference < colorDiffThreshold) break;
 					}
-				}
-				
+				}		
 			}
+
+			System.out.println("Min color diff for tile = "+minDifference);
 			tilesManager.getTile(matchTileID).setUsed();
 			bGr.drawImage(
-					tilesManager.getTile(matchTileID).getTileImage().getScaledInstance(widthTile,
-							heightTile,
-							Image.SCALE_SMOOTH),
+					tilesManager.getTile(matchTileID).getTileImage().getScaledInstance(
+						widthTile,
+						heightTile,
+						Image.SCALE_SMOOTH),
 					x*widthTile,
 					y*heightTile,
 					widthTile,
@@ -101,6 +100,54 @@ public class MosaicRender {
 					null);
 		}
 	    bGr.dispose();
+	}
+	
+	public void createTestMosaic(){
+		double minDifference = 500;
+		int chosenR = 0;
+		int chosenG = 0;
+		int chosenB = 0; 
+
+		this.finalImageBuffer = new BufferedImage(xTiles,
+				yTiles,
+				BufferedImage.TYPE_INT_ARGB);
+	    	    
+		for (int i = 0; i < xTiles*yTiles; i++){
+			int progress = 100*(i+1)/(xTiles*yTiles);
+			if (progress%1 == 0) progressListener.update(progress);
+			
+			minDifference = 500;
+
+			int x = i%xTiles;
+			int y = i/xTiles;
+			LabColor labColor = new LabColor(mapImageBuffer.getRGB(x, y));
+			 
+			long counter = 0;
+			while(true){
+				counter++;
+				int randomR = (int)(Math.random() * 255);
+				int randomG = (int)(Math.random() * 255);
+				int randomB = (int)(Math.random() * 255);
+
+				double diff = LabColor.getDeltaErgb(new LabColor(randomR, randomG, randomB),
+						labColor);
+				if (diff < minDifference){
+					minDifference = diff;
+					chosenR = randomR;
+					chosenG = randomG;
+					chosenB = randomB;
+					if (minDifference < colorDiffThreshold){
+						break;
+					}
+				}
+				if (counter > 100000){
+					break;
+				}
+			}
+			System.out.println("Min color diff for tile = "+minDifference);
+			finalImageBuffer.setRGB(x, y, new Color(chosenR, chosenG, chosenB).getRGB());
+		}
+
 	}
 	
 	public void prepareMapImage(){
@@ -153,13 +200,14 @@ public class MosaicRender {
 		}
 	}
 	
-	public void updateMosaicParameters(int xTiles, int yTiles, int widthTile, int heightTile){
+	public void updateMosaicParameters(int xTiles, int yTiles, int widthTile, int heightTile, double colorDiffThreshold, int maxTileUse){
 		this.xTiles = xTiles;
 		this.yTiles = yTiles;
 		this.widthTile = widthTile;
 		this.heightTile = heightTile;
+		this.colorDiffThreshold = colorDiffThreshold;
+		this.maxTileUse = maxTileUse;
 		prepareMapImage();
 	}
 	
-
 }

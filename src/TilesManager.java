@@ -31,6 +31,9 @@ public class TilesManager {
 		tiles.add(t);
 	}
 	
+	public ArrayList<Tile> getTileList(){
+		return tiles;
+	}
 	
 	/**
 	 * Imports image tiles from JFileChooser

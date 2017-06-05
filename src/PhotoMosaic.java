@@ -51,7 +51,8 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 	private JFrame frame;
 	private JButton runButton;
 	private JTabbedPane imageTabbedPane;
-	private JSpinner xTileSpinner, yTileSpinner, widthTileSpinner, heightTileSpinner;
+	private JSpinner xTileSpinner, yTileSpinner, widthTileSpinner, heightTileSpinner, colorDiffThresholdSpinner;
+	private JSpinner maxTileUseSpinner;
 	private JPanel baseImagePanel, mapImagePanel, finalImagePanel;
 	private JProgressBar progressBar;
 	String imageWidthString = "Base image width: ";
@@ -170,18 +171,37 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
         settingPanel.add(label4);
         settingPanel.add(heightTileSpinner);
         
+        colorDiffThresholdSpinner = new JSpinner(new SpinnerNumberModel(10.0, 0.0, 255.0, 0.1));
+        JLabel label5 = new JLabel("Color Diff");
+        colorDiffThresholdSpinner.addChangeListener(this);
+        settingPanel.add(label5);
+        settingPanel.add(colorDiffThresholdSpinner);
+        
+        maxTileUseSpinner = new JSpinner(new SpinnerNumberModel(100, 0, 300, 10));
+        JLabel label6 = new JLabel("Max Tile Use");
+        maxTileUseSpinner.addChangeListener(this);
+        settingPanel.add(label6);
+        settingPanel.add(maxTileUseSpinner);
+        
         SpringUtilities.makeCompactGrid(settingPanel,
-                4, 2, 			//rows, cols
+                6, 2, 			//rows, cols
                 6, 6,        	//initX, initY
                 6, 6);       	//xPad, yPad
                 
         optionsPanel.add(settingPanel, BorderLayout.PAGE_START);
 
+        JPanel buttonsPanel = new JPanel();
         runButton = new JButton("Run");
         runButton.setActionCommand("RunAction");
         runButton.addActionListener(this);
-        optionsPanel.add(runButton, BorderLayout.PAGE_END);
-
+        buttonsPanel.add(runButton);
+        
+        JButton runTestButton = new JButton("Test Run");
+        runTestButton.setActionCommand("RunTestAction");
+        runTestButton.addActionListener(this);
+        buttonsPanel.add(runTestButton);
+        optionsPanel.add(buttonsPanel, BorderLayout.PAGE_END);
+        
 		frame.getContentPane().add(optionsPanel, BorderLayout.LINE_START);
 		
 		JPanel infoPanel = new JPanel();
@@ -292,6 +312,16 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 				System.out.println("No tiles in library or importer is running");
 			}
 		}
+		if (actionCommand.equals("RunTestAction")){		
+			new Thread(new Runnable(){
+
+				@Override
+				public void run() {
+					mosaicRenderer.createTestMosaic();
+				}
+				
+			}).start();
+		}
 	
 	}
 
@@ -300,7 +330,9 @@ public class PhotoMosaic implements ActionListener, ChangeListener, ComponentLis
 		mosaicRenderer.updateMosaicParameters((int)xTileSpinner.getValue(),
 				(int)yTileSpinner.getValue(),
 				(int)widthTileSpinner.getValue(),
-				(int)heightTileSpinner.getValue());
+				(int)heightTileSpinner.getValue(),
+				(double)colorDiffThresholdSpinner.getValue(),
+				(int)maxTileUseSpinner.getValue());
 		updateUI();
 	}
 
